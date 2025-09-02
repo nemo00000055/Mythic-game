@@ -32,7 +32,6 @@ export const CREATURES = [
   "Oni","Yeti","Dryad","Ghoul","Titan"
 ];
 
-// Theme maps
 export const THEMES = ["Warrior","Undead","Draconic","Nature","Holy","Arcane","Rogue","Beast","Giant","Frost","Demonic","Tech","Elemental","Abyss"];
 export const THEME_ROTATION = ["Draconic","Undead","Warrior","Nature","Arcane","Beast","Holy","Frost","Giant","Demonic","Tech","Elemental","Abyss"];
 
@@ -82,5 +81,4 @@ export const CLASS_TRAITS = {
   Titan:  { def:+14, hp:+25, special:{ name:"Colossus Smash", cd:4, mult:1.8 } },
   Lich:   { atk:+12, def:+6, special:{ name:"Necrotic Pulse", cd:4, mult:1.8 } },
 };
-
 export const DEFAULT_TRAIT = { atk:+6, def:+4, hp:+10, lifesteal:+2, gold:+0, special:{ name:"Power Move", cd:4, mult:1.5 } };
