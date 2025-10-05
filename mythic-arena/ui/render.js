@@ -1,95 +1,66 @@
-import { $, $$, clear, el } from "./dom.js";
-import { HEROES, CREATURES, groupHeroesByTheme, groupCreaturesByTheme } from "../systems/constants.js";
-// These two functions should already exist deeper in your game; we call them after entering Battle.
-import { bootBattleIfNeeded, renderAll } from "../ui/panels.js";
-import { previewWaveText } from "../systems/themeManager.js";
+import { $ } from "./dom.js";
 
 /**
- * Build selection lists (10 random entries each) and group by theme with <optgroup>.
- * If grouping fails, fallback to flat list (robustness).
- */
-export function buildSelectionLists(state) {
-  const side = $("#select-side").value;
-  const heroSel = $("#select-hero");
-  const creatureSel = $("#select-creature");
-  clear(heroSel);
-  clear(creatureSel);
-
-  // Pick 10 random unique heroes/creatures
-  const pick10 = (arr) => {
-    const pool = arr.slice();
-    const out = [];
-    while (out.length < 10 && pool.length) {
-      const i = Math.floor(Math.random() * pool.length);
-      out.push(pool.splice(i, 1)[0]);
-    }
-    return out.sort();
-  };
-
-  const h10 = pick10(HEROES);
-  const c10 = pick10(CREATURES);
-
-  // Build <optgroup> by theme; fallback to flat
-  const buildGrouped = (select, groups) => {
-    try {
-      const themes = Object.keys(groups);
-      for (const theme of themes) {
-        const names = groups[theme].filter(n => (select === heroSel ? h10 : c10).includes(n));
-        if (!names.length) continue;
-        const og = el("optgroup");
-        og.label = theme;
-        for (const name of names) {
-          const opt = el("option");
-          opt.value = name;
-          opt.textContent = name;
-          og.appendChild(opt);
-        }
-        select.appendChild(og);
-      }
-      // If nothing got grouped (e.g., all filtered out), flat fallback:
-      if (!select.children.length) {
-        for (const name of (select === heroSel ? h10 : c10)) {
-          const opt = el("option", null, name);
-          opt.value = name;
-          select.appendChild(opt);
-        }
-      }
-    } catch {
-      for (const name of (select === heroSel ? h10 : c10)) {
-        const opt = el("option", null, name);
-        opt.value = name;
-        select.appendChild(opt);
-      }
-    }
-  };
-
-  buildGrouped(heroSel, groupHeroesByTheme());
-  buildGrouped(creatureSel, groupCreaturesByTheme());
-
-  // Clear the opposite list when side chosen (handled by main.js), but pre-select first available
-  if (side === "hero") {
-    creatureSel.selectedIndex = -1;
-    if (heroSel.options.length) heroSel.selectedIndex = 0;
-  } else if (side === "creature") {
-    heroSel.selectedIndex = -1;
-    if (creatureSel.options.length) creatureSel.selectedIndex = 0;
-  } else {
-    heroSel.selectedIndex = -1;
-    creatureSel.selectedIndex = -1;
-  }
-}
-
-/**
- * Entering battle: create player & game state (if needed), then render HUD.
- * Accepts initialName, initialSide, initialClassName.
+ * Called only after Start (or after a Load that fully restores a running game).
+ * You already have the rest of your game setup; this function only paints HUD safely.
  */
 export function renderBattleHUD({ initialName, initialSide, initialClassName }) {
-  bootBattleIfNeeded({ name: initialName, side: initialSide, className: initialClassName });
-  renderAll(); // paints stats, binds buttons, etc.
+  const st = window.state || {};
+  st.player = st.player || {
+    // minimal fallback so HUD doesn't explode if your boot code hasn’t run yet
+    name: initialName || "—",
+    className: initialClassName || "—",
+    level: 1,
+    hp: 100,
+    maxHP: () => 100,
+    atk: 0,
+    def: 0
+  };
+
+  // If you have a real boot/ensure function, call it here before painting:
+  if (typeof window.bootBattleIfNeeded === "function") {
+    window.bootBattleIfNeeded({ name: initialName, side: initialSide, className: initialClassName });
+  }
+
+  renderAllSafely();
 }
 
-/** Paint the Next Wave preview label using the canonical preview function. */
+/** Safe, no-throw HUD paint */
+export function renderAllSafely() {
+  const st = window.state || {};
+  const p = st.player || {};
+
+  // Support both method and number-property shapes
+  const val = (v, fallback=0) =>
+    (typeof v === "function" ? v() : (v ?? fallback));
+
+  const name = p.name ?? "—";
+  const cls = p.className ?? "—";
+  const lvl = p.level ?? 1;
+  const hp  = p.hp ?? 0;
+  const mx  = val(p.maxHP, 100);
+  const atk = val(p.atk, 0);
+  const def = val(p.def, 0);
+
+  $("#stat-player").textContent = `Player: ${name}`;
+  $("#stat-class").textContent  = `Class: ${cls}`;
+  $("#stat-level").textContent  = `LV ${lvl}`;
+  $("#stat-hp").textContent     = `HP ${hp}/${mx}`;
+  $("#stat-atk").textContent    = `ATK ${atk}`;
+  $("#stat-def").textContent    = `DEF ${def}`;
+
+  // Leave wave/theme/nextboss to your existing code if present
+  // XP fill (0–1 assumed)
+  const xpFill = document.getElementById("xp-fill");
+  if (xpFill) xpFill.style.width = `${Math.floor((st.player?.xpPct ?? 0)*100)}%`;
+}
+
+/** Next wave preview – keep a single point of truth. */
 export function updateNextWavePreview() {
-  const txt = previewWaveText(); // assumes it reads from global/current state
-  $("#nextwave").textContent = txt || "—";
+  if (typeof window.previewWaveText === "function") {
+    const txt = window.previewWaveText();
+    document.getElementById("nextwave").textContent = txt || "—";
+  } else {
+    document.getElementById("nextwave").textContent = "—";
+  }
 }

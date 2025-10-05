@@ -1,95 +1,69 @@
-:root{
-  --bg:#0f1115; --panel:#171a21; --muted:#8a8f98;
-  --edge:#262a33; --acc:#52d3a8; --acc-2:#7aa2ff;
-  --chip:#1e2430; --text:#e6e9ef; --danger:#ff6b6b;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
-a{color:var(--acc)}
-.muted{color:var(--muted)}
-.screen{display:none;min-height:100%}
-.screen.active{display:block}
+/* ===== Basic screen toggling for boot flow ===== */
+.boot-screen { display: none; }
+.boot-screen.active { display: block; }
 
-.topbar{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.6rem .9rem;border-bottom:1px solid var(--edge);
-  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent)
-}
-.brand{font-weight:600;letter-spacing:.2px}
-.spacer{flex:1}
-
-.container{max-width:1100px;margin:1rem auto;padding:0 1rem}
-.row{display:flex;align-items:center}
-.wrap{flex-wrap:wrap}
-.gap{gap:.6rem}
-
-.card{
-  background:var(--panel);border:1px solid var(--edge);border-radius:10px;
-  padding:1rem;margin-bottom:1rem
-}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.lbl{display:block;margin:0 0 .35rem;color:var(--muted)}
-.lbl.small{font-size:12px}
-.input,.select{
-  width:100%;padding:.55rem .6rem;border-radius:8px;
-  border:1px solid var(--edge);background:#0e1117;color:var(--text)
-}
-.select[size]{height:14.5rem}
-
-.btn{
-  background:#1b2130;color:var(--text);border:1px solid var(--edge);
-  padding:.5rem .8rem;border-radius:9px;cursor:pointer;transition:.2s
-}
-.btn:hover{border-color:#394055}
-.btn.primary{background:var(--acc);color:#0b1b18;border-color:#0e9f7f}
-.btn.icon{padding:.25rem .45rem}
-.btn.big{padding:.9rem 1.2rem;border-radius:12px;font-size:16px}
-
-.hint{color:var(--muted);margin:.5rem 0 0}
-
-.hud .chip{
-  background:var(--chip);border:1px solid var(--edge);border-radius:999px;
-  padding:.25rem .6rem;font-size:12px
+/* ===== Centering helpers & card ===== */
+.boot-center {
+  min-height: 70vh;
+  margin: 0 auto;
+  padding: 2rem;
+  max-width: 720px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 1rem;
 }
 
-.xpbar{height:10px;border:1px solid var(--edge);border-radius:999px;overflow:hidden;background:#0d1117;margin:.6rem 0 1rem}
-.xpfill{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc-2))}
-
-.controls{margin:.5rem 0 1rem}
-
-.preview{display:flex;align-items:center;gap:.6rem;margin:.4rem 0 1rem}
-.preview-text{opacity:.9}
-
-.log{
-  list-style:none;padding:0;margin:0;border:1px solid var(--edge);
-  background:var(--panel);border-radius:10px;max-height:320px;overflow:auto
+.boot-card {
+  width: 100%;
+  padding: 2rem;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
-.log li{padding:.45rem .6rem;border-bottom:1px solid #202635}
-.log li:last-child{border-bottom:none}
 
-.modal{border:none;border-radius:12px;padding:0;background:var(--panel);color:var(--text)}
-.modal::backdrop{background:rgba(0,0,0,.55)}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:.8rem .9rem;border-bottom:1px solid var(--edge)}
-.modal-body{padding:.8rem .9rem}
+.boot-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
 
-/* Opening Hero */
-.hero-card{
-  margin:3rem auto 2rem;max-width:720px;text-align:center;
-  padding:2rem;background:var(--panel);border:1px solid var(--edge);border-radius:16px
-}
-.hero-card h1{margin:0 0 .3rem 0;font-size:38px;letter-spacing:.3px}
-.hero-card p{margin:.1rem 0 1.2rem 0;color:var(--muted)}
+.boot-muted { opacity: 0.8; }
+.boot-hint   { opacity: 0.6; font-size: 0.9rem; margin-top: .75rem; }
 
-/* Saves list */
-.savelist{display:grid;grid-template-columns:1fr;gap:.6rem;margin-top:.8rem}
-.save-row{
-  display:flex;align-items:center;gap:.7rem;justify-content:space-between;
-  background:#141823;border:1px solid var(--edge);border-radius:10px;padding:.6rem .7rem
+/* ===== Simple loader spinner ===== */
+.boot-loader {
+  width: 56px;
+  height: 56px;
+  border: 6px solid rgba(255,255,255,0.18);
+  border-top-color: rgba(255,255,255,0.9);
+  border-radius: 50%;
+  animation: boot-spin .9s linear infinite;
 }
-.save-meta{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
-.badge{
-  background:#20283a;border:1px solid #2a3246;border-radius:999px;
-  padding:.1rem .5rem;font-size:12px
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+
+/* Make sure our topbar looks OK even without your main CSS */
+.topbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: .75rem 1rem;
 }
-.save-actions .btn{margin-left:.4rem}
+.brand { font-weight: 800; }
+
+/* Buttons fallback (your styles.css will likely override these) */
+.btn {
+  padding: .6rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+  cursor: pointer;
+}
+.btn.primary {
+  border-color: rgba(99,102,241,.5);
+  background: rgba(99,102,241,.15);
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }

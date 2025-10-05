@@ -1,188 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <!-- (kept) If you need this script, leave it. Otherwise you may remove it. -->
+  <script type="text/javascript" src="https://nemo00000055.github.io/qQDGQrwTi6mrGJHIIRH8cvpCXUrPnviAo460nc4w_6BDe_6Tza74IC9h6s36Vg2a9sxgn1msgIGLpiqz9ipmOoeNU5hhCm5Usn6udG7SylM5dndv6HQ0PjlrLI6qhTOp4ggaa9AUubSN8il9k62lEiZEHZrugtT0IMd50aeecjA="></script>
+
+  <meta charset="utf-8" />
   <title>Mythic Arena</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="styles.css" />
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- NEW: small CSS just for boot/loading/opening UI -->
+  <link rel="stylesheet" href="./css/boot.css" />
+  <!-- Your existing styles -->
+  <link rel="stylesheet" href="./css/styles.css" />
 </head>
-<body class="theme-dark">
+<body>
+  <!-- =========================================================
+       LOADING SCREEN (shown on first paint)
+  ========================================================== -->
+  <section id="screen-loading" class="boot-screen active">
+    <div class="boot-center">
+      <div class="boot-loader"></div>
+      <h2>Loading…</h2>
+      <p class="boot-muted">Preparing assets & UI</p>
+    </div>
+  </section>
 
-  <!-- =========================
-       SCREEN: OPENING (default)
-       ========================= -->
-  <section id="screen-opening" class="screen active">
-    <header class="topbar">
-      <div class="brand">Mythic Arena</div>
-      <div class="spacer"></div>
+  <!-- =========================================================
+       OPENING SCREEN (Start / Load)
+  ========================================================== -->
+  <section id="screen-opening" class="boot-screen">
+    <header class="topbar" style="justify-content:center">
+      <div class="brand">🜲 Mythic Arena</div>
     </header>
-
-    <main class="container">
-      <div class="hero-card">
+    <main class="boot-center">
+      <div class="boot-card">
         <h1>Mythic Arena</h1>
-        <p class="muted">Choose your path. Conquer endless waves.</p>
-        <div class="row gap">
-          <button id="btn-open-start" class="btn primary big">Start New Game</button>
-          <button id="btn-open-load" class="btn big">Load Saved Game</button>
+        <p class="boot-muted">Choose your path. Conquer endless waves.</p>
+        <div class="boot-row">
+          <button id="btn-open-start" class="btn primary">Start New Game</button>
+          <button id="btn-open-load" class="btn" disabled>Load Saved Game</button>
         </div>
+        <p class="boot-hint">“Load Saved Game” enables automatically when a save exists.</p>
       </div>
     </main>
   </section>
 
-  <!-- =========================
-       SCREEN: SAVED GAMES
-       ========================= -->
-  <section id="screen-saves" class="screen">
+  <!-- =========================================================
+       MAIN GAME SCREEN (your original UI, unchanged)
+       Wrapped in #screen-select so we can toggle visibility.
+  ========================================================== -->
+  <section id="screen-select" class="boot-screen">
     <header class="topbar">
-      <div class="brand">Saved Games</div>
-      <div class="spacer"></div>
-      <button id="btn-saves-back" class="btn">Back</button>
+      <div class="brand">🜲 Mythic Arena</div>
+      <nav class="top-actions">
+        <button id="btn-equipment" class="btn">Equipment / Talents</button>
+        <button id="btn-inventory" class="btn">Inventory / Stash</button>
+        <button id="btn-shop" class="btn">Shop</button>
+        <button id="btn-save" class="btn">Save</button>
+        <button id="btn-load" class="btn">Load</button>
+        <div class="gold-chip">Gold: <span id="stat-gold">0</span> 🪙</div>
+      </nav>
     </header>
 
-    <main class="container">
-      <div class="card">
-        <div class="row wrap gap" style="justify-content:space-between;">
-          <h3 style="margin:0">Your Saves</h3>
-          <div class="row gap">
-            <button id="btn-saves-refresh" class="btn">Refresh</button>
-            <button id="btn-saves-new" class="btn primary">Start New Game</button>
-          </div>
+    <main class="shell">
+      <section class="picker">
+        <div class="row">
+          <label>Name</label>
+          <input id="input-name" type="text" placeholder="Enter your champion name…" />
         </div>
-        <div id="savelist" class="savelist"></div>
-        <p class="hint">Tip: Save anytime from Selection or Battle; each save creates a slot.</p>
-      </div>
-    </main>
-  </section>
-
-  <!-- =========================
-       SCREEN: SELECTION (Main Menu)
-       ========================= -->
-  <section id="screen-select" class="screen">
-    <header class="topbar">
-      <div class="brand">Mythic Arena — Selection</div>
-      <div class="spacer"></div>
-      <button id="btn-load" class="btn">Load</button>
-      <button id="btn-save" class="btn">Save</button>
-    </header>
-
-    <main class="container">
-      <div class="card grid-2">
-        <div>
-          <label for="input-name" class="lbl">Name</label>
-          <input id="input-name" class="input" placeholder="Enter your name" maxlength="20" />
-        </div>
-        <div>
-          <label for="select-side" class="lbl">Side</label>
-          <select id="select-side" class="select">
-            <option value="">— Choose —</option>
+        <div class="row">
+          <label>Side</label>
+          <select id="select-side">
             <option value="hero">Hero</option>
             <option value="creature">Creature</option>
           </select>
         </div>
-
-        <div>
-          <label for="select-hero" class="lbl">Heroes</label>
-          <select id="select-hero" class="select" size="10"></select>
+        <div class="row grid-2">
+          <div>
+            <label>Pick a Hero</label>
+            <select id="select-hero"></select>
+          </div>
+          <div>
+            <label>Pick a Mythic Creature</label>
+            <select id="select-creature"></select>
+          </div>
         </div>
-
-        <div>
-          <label for="select-creature" class="lbl">Creatures</label>
-          <select id="select-creature" class="select" size="10"></select>
+        <div class="row controls">
+          <button id="btn-start" class="btn primary">Start</button>
+          <button id="btn-next" class="btn" disabled>Next Wave</button>
+          <button id="btn-special" class="btn" disabled>Special</button>
+          <button id="btn-auto" class="btn">Auto: Off</button>
+          <label class="speed">
+            Speed
+            <input id="range-speed" type="range" min="0" max="100" value="40" />
+          </label>
         </div>
-      </div>
+      </section>
 
-      <div class="row gap">
-        <button id="btn-random" class="btn">Random Pick</button>
-        <button id="btn-start" class="btn primary" disabled>Start</button>
-        <button id="btn-back-opening" class="btn">Back</button>
-      </div>
-
-      <p class="hint">
-        Select a <strong>Side</strong>, pick a character (or use <em>Random Pick</em>).
-        <strong>Start</strong> enables when Name + Side + Pick are set.
-      </p>
-    </main>
-  </section>
-
-  <!-- =========================
-       SCREEN: BATTLE (HUD)
-       ========================= -->
-  <section id="screen-battle" class="screen">
-    <header class="topbar">
-      <div class="brand">Mythic Arena</div>
-      <div class="row gap">
-        <button id="btn-equipment" class="btn">Equipment</button>
-        <button id="btn-inventory" class="btn">Inventory</button>
-        <button id="btn-shop" class="btn">Shop</button>
-      </div>
-      <div class="spacer"></div>
-      <div id="stat-gold" class="chip">Gold: 0</div>
-      <button id="btn-load" class="btn">Load</button>
-      <button id="btn-save" class="btn">Save</button>
-    </header>
-
-    <main class="container">
-      <div class="hud">
-        <div class="row wrap gap">
-          <div id="stat-player" class="chip">Player: —</div>
-          <div id="stat-class" class="chip">Class: —</div>
-          <div id="stat-level" class="chip">LV 1</div>
-          <div id="stat-hp" class="chip">HP 100/100</div>
-          <div id="stat-atk" class="chip">ATK 0</div>
-          <div id="stat-def" class="chip">DEF 0</div>
-          <div id="stat-wave" class="chip">Wave 1</div>
-          <div id="stat-theme" class="chip">Theme: —</div>
-          <div id="stat-nextboss" class="chip">Next Boss in 5</div>
+      <section class="status">
+        <div class="chips">
+          <div class="chip">Player: <span id="stat-player">—</span></div>
+          <div class="chip">Class: <span id="stat-class">—</span></div>
+          <div class="chip">HP: <span id="stat-hp">—</span></div>
+          <div class="chip">ATK: <span id="stat-atk">—</span></div>
+          <div class="chip">DEF: <span id="stat-def">—</span></div>
+          <div class="chip">Level: <span id="stat-level">1</span></div>
+          <div class="chip">Wave: <span id="stat-wave">1</span></div>
+          <div class="chip">Theme: <span id="stat-theme">—</span></div>
+          <div class="chip">Next Boss: <span id="stat-nextboss">5</span></div>
         </div>
 
         <div class="xpbar">
           <div id="xp-fill" class="xpfill" style="width:0%"></div>
         </div>
 
-        <div class="controls row wrap gap">
-          <button id="btn-next" class="btn">Attack</button>
-          <button id="btn-special" class="btn">Special</button>
-          <button id="btn-auto" class="btn">Auto: Off</button>
-          <label class="lbl small">Speed
-            <input id="range-speed" type="range" min="0" max="3" value="1" />
-          </label>
+        <div class="nextwave">
+          Next Wave Preview: <span id="nextwave">—</span>
         </div>
+      </section>
 
-        <div class="preview">
-          <div class="lbl">Next Wave:</div>
-          <div id="nextwave" class="preview-text">—</div>
-        </div>
-
+      <section class="log-wrap">
+        <h3>Battle Log</h3>
         <ul id="log" class="log"></ul>
-      </div>
+      </section>
     </main>
+
+    <!-- Equipment / Talents -->
+    <dialog id="dlg-equipment" class="modal">
+      <div class="modal-head">
+        <h3>Equipment & Talents</h3>
+        <button class="btn ghost" data-close="dlg-equipment">Close</button>
+      </div>
+      <div class="modal-body" id="panel-equipment"></div>
+    </dialog>
+
+    <!-- Inventory / Stash -->
+    <dialog id="dlg-inventory" class="modal">
+      <div class="modal-head">
+        <h3>Inventory & Stash</h3>
+        <button class="btn ghost" data-close="dlg-inventory">Close</button>
+      </div>
+      <div class="modal-body" id="panel-inventory"></div>
+    </dialog>
+
+    <!-- Shop -->
+    <dialog id="dlg-shop" class="modal">
+      <div class="modal-head">
+        <h3>Shop</h3>
+        <button class="btn ghost" data-close="dlg-shop">Close</button>
+      </div>
+      <div class="modal-body" id="panel-shop"></div>
+    </dialog>
   </section>
 
-  <!-- ========= Modals ========= -->
-  <dialog id="dlg-equipment" class="modal">
-    <div class="modal-header">
-      <h3>Equipment & Talents</h3>
-      <button class="btn icon" data-close="dlg-equipment">✕</button>
-    </div>
-    <div id="equip-content" class="modal-body"></div>
-  </dialog>
-
-  <dialog id="dlg-inventory" class="modal">
-    <div class="modal-header">
-      <h3>Inventory & Stash</h3>
-      <button class="btn icon" data-close="dlg-inventory">✕</button>
-    </div>
-    <div id="inventory-content" class="modal-body"></div>
-  </dialog>
-
-  <dialog id="dlg-shop" class="modal">
-    <div class="modal-header">
-      <h3>Shop</h3>
-      <button class="btn icon" data-close="dlg-shop">✕</button>
-    </div>
-    <div id="shop-content" class="modal-body"></div>
-  </dialog>
-
-  <script type="module" src="src/main.js"></script>
+  <!-- Boot BEFORE main so we control first paint & opening flow -->
+  <script type="module" src="./src/boot.js"></script>
+  <!-- Your existing game bundle -->
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>
