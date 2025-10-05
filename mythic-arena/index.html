@@ -9,9 +9,55 @@
 <body class="theme-dark">
 
   <!-- =========================
-       SCREEN: SELECTION
+       SCREEN: OPENING
        ========================= -->
-  <section id="screen-select" class="screen active">
+  <section id="screen-opening" class="screen active">
+    <header class="topbar">
+      <div class="brand">Mythic Arena</div>
+      <div class="spacer"></div>
+    </header>
+
+    <main class="container">
+      <div class="hero-card">
+        <h1>Mythic Arena</h1>
+        <p class="muted">Choose your path. Conquer endless waves.</p>
+        <div class="row gap">
+          <button id="btn-open-start" class="btn primary big">Start New Game</button>
+          <button id="btn-open-load" class="btn big">Load Saved Game</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- =========================
+       SCREEN: SAVED GAMES
+       ========================= -->
+  <section id="screen-saves" class="screen">
+    <header class="topbar">
+      <div class="brand">Saved Games</div>
+      <div class="spacer"></div>
+      <button id="btn-saves-back" class="btn">Back</button>
+    </header>
+
+    <main class="container">
+      <div class="card">
+        <div class="row wrap gap" style="justify-content:space-between;">
+          <h3 style="margin:0">Your Saves</h3>
+          <div class="row gap">
+            <button id="btn-saves-refresh" class="btn">Refresh</button>
+            <button id="btn-saves-new" class="btn primary">Start New Game</button>
+          </div>
+        </div>
+        <div id="savelist" class="savelist"></div>
+        <p class="hint">Tip: From the battle screen you can save anytime; each save becomes a new slot.</p>
+      </div>
+    </main>
+  </section>
+
+  <!-- =========================
+       SCREEN: SELECTION (Main Menu)
+       ========================= -->
+  <section id="screen-select" class="screen">
     <header class="topbar">
       <div class="brand">Mythic Arena — Selection</div>
       <div class="spacer"></div>
@@ -48,6 +94,7 @@
       <div class="row gap">
         <button id="btn-random" class="btn">Random Pick</button>
         <button id="btn-start" class="btn primary" disabled>Start</button>
+        <button id="btn-back-opening" class="btn">Back</button>
       </div>
 
       <p class="hint">
@@ -58,7 +105,7 @@
   </section>
 
   <!-- =========================
-       SCREEN: BATTLE (existing HUD)
+       SCREEN: BATTLE
        ========================= -->
   <section id="screen-battle" class="screen">
     <header class="topbar">
@@ -111,7 +158,7 @@
     </main>
   </section>
 
-  <!-- ========= Modals (existing) ========= -->
+  <!-- ========= Modals ========= -->
   <dialog id="dlg-equipment" class="modal">
     <div class="modal-header">
       <h3>Equipment & Talents</h3>

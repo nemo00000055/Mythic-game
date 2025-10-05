@@ -1,69 +1,191 @@
 import { $, $$, openModal, closeModal, clear } from "./ui/dom.js";
 import { buildSelectionLists, renderBattleHUD, updateNextWavePreview } from "./ui/render.js";
 import { HEROES, CREATURES } from "./systems/constants.js";
-// NOTE: The rest of your modules (player/inventory/items/waves/etc.) remain unchanged and are used by renderBattleHUD() as before.
+import { listSaves, saveNewSlot, deleteSave, loadSave } from "./systems/saveManager.js";
 
-const STORAGE_KEY = "mythic-arena-save";
+const QUICK_KEY = "mythic-arena-save"; // kept for backward compatibility (single quick-save)
 
 /** ----------------------------------------------------------------
- * State scaffold — keep your original state shape for battle screen.
- * We only add a tiny ui object for screen routing & pending selection.
+ * Global UI State
  * --------------------------------------------------------------- */
 const state = {
-  // original game state fields will be created/loaded by renderBattleHUD()
   ui: {
-    screen: "select", // "select" | "battle"
-    pending: { side: "", name: "", className: "" }
+    screen: "opening", // "opening" | "saves" | "select" | "battle"
+    pending: { side: "", name: "", className: "" },
+    // when loading from a slot, we stash it here (for deserializer)
+    loadSlotId: null
   }
 };
-
 window.state = state;
 
 /** =======================
- * Routing between screens
+ * Routing helpers
  * ======================= */
 function showScreen(id) {
   for (const s of $$(".screen")) s.classList.remove("active");
   $(id).classList.add("active");
-  state.ui.screen = id === "#screen-select" ? "select" : "battle";
+  state.ui.screen =
+    id === "#screen-opening" ? "opening" :
+    id === "#screen-saves" ? "saves" :
+    id === "#screen-select" ? "select" : "battle";
 }
 
 /** =======================
- * Save / Load
+ * Toast helper
  * ======================= */
-function saveGame() {
-  // Delegate to your existing serializer if present on window
-  if (window.__serializeGameState) {
-    const payload = window.__serializeGameState();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } else {
-    // Minimal fallback: store selection if battle hasn’t started
-    const payload = { pending: state.ui.pending, marker: "selection-only" };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+let toastTimer = null;
+function toast(msg) {
+  clearTimeout(toastTimer);
+  let el = $("#__toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "__toast";
+    el.style.position = "fixed";
+    el.style.right = "12px";
+    el.style.bottom = "12px";
+    el.style.background = "rgba(0,0,0,.7)";
+    el.style.border = "1px solid #333a";
+    el.style.padding = "8px 10px";
+    el.style.borderRadius = "8px";
+    el.style.color = "#fff";
+    el.style.fontSize = "13px";
+    document.body.appendChild(el);
   }
-  toast("Game saved.");
+  el.textContent = msg;
+  el.style.opacity = "1";
+  toastTimer = setTimeout(() => (el.style.opacity = "0"), 1800);
 }
 
-function loadGame() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return toast("No save found.");
-  const data = JSON.parse(raw);
+/** =======================
+ * Opening Screen
+ * ======================= */
+function setupOpening() {
+  $("#btn-open-start").addEventListener("click", () => {
+    showSelection();
+  });
+  $("#btn-open-load").addEventListener("click", () => {
+    showSaves();
+  });
+}
 
-  // If full-game loader exists, prefer it.
-  if (window.__deserializeGameState && data && !data.marker) {
-    window.__deserializeGameState(data);
-    // __deserializeGameState should rebuild UI & wire everything.
+/** =======================
+ * Saved Games Screen
+ * ======================= */
+function renderSavesList() {
+  const root = $("#savelist");
+  clear(root);
+
+  const saves = listSaves();
+  if (!saves.length) {
+    const empty = document.createElement("div");
+    empty.className = "card";
+    empty.textContent = "No saved games yet.";
+    root.appendChild(empty);
+    return;
+  }
+
+  for (const s of saves) {
+    const row = document.createElement("div");
+    row.className = "save-row";
+
+    const meta = document.createElement("div");
+    meta.className = "save-meta";
+    const name = s.meta?.name || "Unnamed";
+    const side = s.meta?.side || "—";
+    const cls = s.meta?.className || "—";
+    const wave = s.meta?.wave ?? "—";
+    const level = s.meta?.level ?? "—";
+    const created = new Date(s.createdAt || Date.now()).toLocaleString();
+    const updated = new Date(s.updatedAt || Date.now()).toLocaleString();
+
+    const title = document.createElement("strong");
+    title.textContent = name;
+
+    const b1 = badge(side);
+    const b2 = badge(cls);
+    const b3 = badge(`Wave ${wave}`);
+    const b4 = badge(`LV ${level}`);
+    const b5 = badge(`Updated ${updated}`);
+
+    meta.appendChild(title);
+    meta.appendChild(b1);
+    meta.appendChild(b2);
+    meta.appendChild(b3);
+    meta.appendChild(b4);
+    meta.appendChild(b5);
+
+    const actions = document.createElement("div");
+    actions.className = "save-actions";
+
+    const btnLoad = document.createElement("button");
+    btnLoad.className = "btn";
+    btnLoad.textContent = "Load";
+    btnLoad.addEventListener("click", () => {
+      handleLoadSlot(s.id);
+    });
+
+    const btnDelete = document.createElement("button");
+    btnDelete.className = "btn";
+    btnDelete.textContent = "Delete";
+    btnDelete.addEventListener("click", () => {
+      if (confirm("Delete this save?")) {
+        deleteSave(s.id);
+        renderSavesList();
+      }
+    });
+
+    actions.appendChild(btnLoad);
+    actions.appendChild(btnDelete);
+
+    row.appendChild(meta);
+    row.appendChild(actions);
+
+    root.appendChild(row);
+  }
+
+  function badge(txt) {
+    const b = document.createElement("span");
+    b.className = "badge";
+    b.textContent = txt;
+    return b;
+  }
+}
+
+function setupSaves() {
+  $("#btn-saves-refresh").addEventListener("click", renderSavesList);
+  $("#btn-saves-new").addEventListener("click", () => {
+    showSelection();
+  });
+  $("#btn-saves-back").addEventListener("click", () => {
+    // If we came from battle/select via Load, go back there; else opening
+    if (historyCanReturnToGame()) {
+      historyBackToGame();
+    } else {
+      showOpening();
+    }
+  });
+}
+
+function handleLoadSlot(slotId) {
+  const slot = loadSave(slotId);
+  if (!slot) return toast("Save not found.");
+
+  // Prefer full-game deserializer if available:
+  if (window.__deserializeGameState && slot.blob && !slot.blob.marker) {
+    window.__deserializeGameState(slot.blob);
+    state.ui.loadSlotId = slotId;
     showBattle();
     toast("Game loaded.");
     return;
   }
 
-  // Otherwise, restore selection-only (pre-battle)
-  if (data?.pending) {
-    state.ui.pending = data.pending;
+  // Fallback: selection-only data
+  if (slot.blob?.pending) {
+    state.ui.pending = slot.blob.pending;
+    showSelection();
+    // Populate selects with restored values
     $("#input-name").value = state.ui.pending.name || "";
     $("#select-side").value = state.ui.pending.side || "";
-    // repopulate lists and select the className if possible
     buildSelectionLists(state);
     if (state.ui.pending.side === "hero" && state.ui.pending.className) {
       $("#select-hero").value = state.ui.pending.className;
@@ -73,12 +195,29 @@ function loadGame() {
     }
     syncStartButton();
     toast("Selection restored. Press Start to begin.");
+  } else {
+    toast("This save is not compatible.");
   }
 }
 
 /** =======================
- * Selection Screen Logic
+ * Selection Screen (Main Menu)
  * ======================= */
+function showSelection() {
+  showScreen("#screen-select");
+  buildSelectionLists(state);
+  syncStartButton();
+}
+
+function showOpening() {
+  showScreen("#screen-opening");
+}
+
+function showSaves() {
+  showScreen("#screen-saves");
+  renderSavesList();
+}
+
 function syncStartButton() {
   const ok = !!(state.ui.pending.side && state.ui.pending.className && state.ui.pending.name);
   $("#btn-start").disabled = !ok;
@@ -86,7 +225,6 @@ function syncStartButton() {
 
 function onSideChange() {
   state.ui.pending.side = $("#select-side").value;
-  // Clear the other list per spec
   if (state.ui.pending.side === "hero") {
     $("#select-creature").selectedIndex = -1;
     state.ui.pending.className = $("#select-hero").value || "";
@@ -135,82 +273,68 @@ function randomPick() {
 }
 
 /** =======================
- * Start → Battle screen
+ * Start → Battle
  * ======================= */
 function showBattle() {
   showScreen("#screen-battle");
-
-  // Render/boot the battle HUD using your existing plumbing.
-  // This call should:
-  //  - Create the Player with (name, className)
-  //  - Initialize wave/shop/inventory state if not present
-  //  - Wire buttons (#btn-next, #btn-special, #btn-auto, dialogs)
   renderBattleHUD({
     initialName: state.ui.pending.name,
-    initialSide: state.ui.pending.side,      // "hero" | "creature"
+    initialSide: state.ui.pending.side,
     initialClassName: state.ui.pending.className
   });
-
-  // After HUD is ready, paint first preview
   updateNextWavePreview();
 }
 
 /** =======================
- * Toaster (tiny)
+ * Save / Load Buttons in headers
  * ======================= */
-let toastTimer = null;
-function toast(msg) {
-  clearTimeout(toastTimer);
-  let el = $("#__toast");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "__toast";
-    el.style.position = "fixed";
-    el.style.right = "12px";
-    el.style.bottom = "12px";
-    el.style.background = "rgba(0,0,0,.7)";
-    el.style.border = "1px solid #333a";
-    el.style.padding = "8px 10px";
-    el.style.borderRadius = "8px";
-    el.style.color = "#fff";
-    el.style.fontSize = "13px";
-    document.body.appendChild(el);
+function currentGameSnapshotMeta(blob) {
+  // Try to extract meta for save listing
+  try {
+    const p = blob?.player || {};
+    return {
+      name: p.name || state.ui.pending.name || "Unnamed",
+      side: blob?.side || state.ui.pending.side || "—",
+      className: p.className || state.ui.pending.className || "—",
+      wave: blob?.wave ?? "—",
+      level: p.level ?? "—"
+    };
+  } catch {
+    return { name: "Unnamed", side: "—", className: "—", wave: "—", level: "—" };
   }
-  el.textContent = msg;
-  el.style.opacity = "1";
-  toastTimer = setTimeout(() => (el.style.opacity = "0"), 1800);
+}
+
+function serializeForSave() {
+  if (window.__serializeGameState) {
+    const blob = window.__serializeGameState();
+    return { blob, meta: currentGameSnapshotMeta(blob) };
+  }
+  // selection-only fallback
+  const blob = { pending: state.ui.pending, marker: "selection-only" };
+  return { blob, meta: currentGameSnapshotMeta(blob) };
+}
+
+function doSaveToSlot() {
+  const { blob, meta } = serializeForSave();
+  saveNewSlot({ blob, meta });
+  toast("Saved to new slot.");
+}
+
+function wireHeaderSaveLoadButtons() {
+  // On selection screen
+  $("#screen-select #btn-save").addEventListener("click", doSaveToSlot);
+  $("#screen-select #btn-load").addEventListener("click", showSaves);
+  $("#btn-back-opening").addEventListener("click", showOpening);
+
+  // On battle screen
+  $("#screen-battle #btn-save").addEventListener("click", doSaveToSlot);
+  $("#screen-battle #btn-load").addEventListener("click", showSaves);
 }
 
 /** =======================
- * Wire up Selection screen
+ * ESC closes any dialog
  * ======================= */
-function setupSelection() {
-  buildSelectionLists(state); // creates 10-per-side grouped lists
-
-  $("#select-side").addEventListener("change", onSideChange);
-  $("#input-name").addEventListener("input", onNameInput);
-  $("#select-hero").addEventListener("change", onPickChange);
-  $("#select-creature").addEventListener("change", onPickChange);
-
-  $("#btn-random").addEventListener("click", randomPick);
-  $("#btn-start").addEventListener("click", showBattle);
-
-  // Save / Load on selection header
-  // (IDs are duplicated across screens by design; use closest section scope)
-  for (const btn of $$("#screen-select #btn-save")) btn.addEventListener("click", saveGame);
-  for (const btn of $$("#screen-select #btn-load")) btn.addEventListener("click", loadGame);
-
-  // Also wire on the battle header now (will work after we switch screens)
-  for (const btn of $$("#screen-battle #btn-save")) btn.addEventListener("click", () => {
-    // delegate to battle serializer if available; fallback to selection
-    saveGame();
-  });
-  for (const btn of $$("#screen-battle #btn-load")) btn.addEventListener("click", loadGame);
-
-  // Disable Start until a valid pick
-  syncStartButton();
-
-  // ESC closes any open dialog (robustness)
+function setupGlobalEscClose() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       for (const dlg of $$("dialog[open]")) dlg.close();
@@ -222,6 +346,36 @@ function setupSelection() {
  * Boot
  * ======================= */
 document.addEventListener("DOMContentLoaded", () => {
-  showScreen("#screen-select");
-  setupSelection();
+  setupOpening();
+  setupSaves();
+
+  // Selection screen bindings
+  $("#select-side").addEventListener("change", onSideChange);
+  $("#input-name").addEventListener("input", onNameInput);
+  $("#select-hero").addEventListener("change", onPickChange);
+  $("#select-creature").addEventListener("change", onPickChange);
+  $("#btn-random").addEventListener("click", randomPick);
+  $("#btn-start").addEventListener("click", showBattle);
+
+  wireHeaderSaveLoadButtons();
+  setupGlobalEscClose();
+
+  // Start on Opening screen
+  showOpening();
 });
+
+/** Utilities to decide where to go "Back" from Saves screen */
+function historyCanReturnToGame() {
+  // If we were on selection or battle before, their sections might be visible in memory
+  // Here we simply check if user has made any selection or if a battle HUD might be active
+  if (state.ui.pending.side || state.ui.pending.className || state.ui.pending.name) return true;
+  // You can expand this with more robust checks if needed
+  return false;
+}
+function historyBackToGame() {
+  if ($("#screen-battle").classList.contains("active")) {
+    showBattle();
+  } else {
+    showSelection();
+  }
+}
