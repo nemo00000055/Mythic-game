@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mythic Arena</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="theme-dark">
+
+  <!-- =========================
+       SCREEN: SELECTION
+       ========================= -->
+  <section id="screen-select" class="screen active">
+    <header class="topbar">
+      <div class="brand">Mythic Arena — Selection</div>
+      <div class="spacer"></div>
+      <button id="btn-load" class="btn">Load</button>
+      <button id="btn-save" class="btn">Save</button>
+    </header>
+
+    <main class="container">
+      <div class="card grid-2">
+        <div>
+          <label for="input-name" class="lbl">Name</label>
+          <input id="input-name" class="input" placeholder="Enter your name" maxlength="20" />
+        </div>
+        <div>
+          <label for="select-side" class="lbl">Side</label>
+          <select id="select-side" class="select">
+            <option value="">— Choose —</option>
+            <option value="hero">Hero</option>
+            <option value="creature">Creature</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="select-hero" class="lbl">Heroes</label>
+          <select id="select-hero" class="select" size="10"></select>
+        </div>
+
+        <div>
+          <label for="select-creature" class="lbl">Creatures</label>
+          <select id="select-creature" class="select" size="10"></select>
+        </div>
+      </div>
+
+      <div class="row gap">
+        <button id="btn-random" class="btn">Random Pick</button>
+        <button id="btn-start" class="btn primary" disabled>Start</button>
+      </div>
+
+      <p class="hint">
+        Select a <strong>Side</strong>, pick one entry from the corresponding list (or use <em>Random Pick</em>).
+        The <strong>Start</strong> button will enable once you have a valid selection.
+      </p>
+    </main>
+  </section>
+
+  <!-- =========================
+       SCREEN: BATTLE (existing HUD)
+       ========================= -->
+  <section id="screen-battle" class="screen">
+    <header class="topbar">
+      <div class="brand">Mythic Arena</div>
+      <div class="row gap">
+        <button id="btn-equipment" class="btn">Equipment</button>
+        <button id="btn-inventory" class="btn">Inventory</button>
+        <button id="btn-shop" class="btn">Shop</button>
+      </div>
+      <div class="spacer"></div>
+      <div id="stat-gold" class="chip">Gold: 0</div>
+      <button id="btn-load" class="btn">Load</button>
+      <button id="btn-save" class="btn">Save</button>
+    </header>
+
+    <main class="container">
+      <div class="hud">
+        <div class="row wrap gap">
+          <div id="stat-player" class="chip">Player: —</div>
+          <div id="stat-class" class="chip">Class: —</div>
+          <div id="stat-level" class="chip">LV 1</div>
+          <div id="stat-hp" class="chip">HP 100/100</div>
+          <div id="stat-atk" class="chip">ATK 0</div>
+          <div id="stat-def" class="chip">DEF 0</div>
+          <div id="stat-wave" class="chip">Wave 1</div>
+          <div id="stat-theme" class="chip">Theme: —</div>
+          <div id="stat-nextboss" class="chip">Next Boss in 5</div>
+        </div>
+
+        <div class="xpbar">
+          <div id="xp-fill" class="xpfill" style="width:0%"></div>
+        </div>
+
+        <div class="controls row wrap gap">
+          <button id="btn-next" class="btn">Attack</button>
+          <button id="btn-special" class="btn">Special</button>
+          <button id="btn-auto" class="btn">Auto: Off</button>
+          <label class="lbl small">Speed
+            <input id="range-speed" type="range" min="0" max="3" value="1" />
+          </label>
+        </div>
+
+        <div class="preview">
+          <div class="lbl">Next Wave:</div>
+          <div id="nextwave" class="preview-text">—</div>
+        </div>
+
+        <ul id="log" class="log"></ul>
+      </div>
+    </main>
+  </section>
+
+  <!-- ========= Modals (existing) ========= -->
+  <dialog id="dlg-equipment" class="modal">
+    <div class="modal-header">
+      <h3>Equipment & Talents</h3>
+      <button class="btn icon" data-close="dlg-equipment">✕</button>
+    </div>
+    <div id="equip-content" class="modal-body"></div>
+  </dialog>
+
+  <dialog id="dlg-inventory" class="modal">
+    <div class="modal-header">
+      <h3>Inventory & Stash</h3>
+      <button class="btn icon" data-close="dlg-inventory">✕</button>
+    </div>
+    <div id="inventory-content" class="modal-body"></div>
+  </dialog>
+
+  <dialog id="dlg-shop" class="modal">
+    <div class="modal-header">
+      <h3>Shop</h3>
+      <button class="btn icon" data-close="dlg-shop">✕</button>
+    </div>
+    <div id="shop-content" class="modal-body"></div>
+  </dialog>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
