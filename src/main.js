@@ -1,5 +1,5 @@
-// src/main.js (ES module — no <script> tag here)
-import { $, openModal, closeModal, formatGold } from '../ui/dom.js';
+// src/main.js  (ES module)
+import { $, openModal, closeModal } from '../ui/dom.js';
 import { renderAll } from '../ui/render.js';
 import {
   setupEquipmentPanel, renderEquipment,
@@ -16,21 +16,19 @@ import { HEROES, CREATURES, THEME_ROTATION } from '../systems/constants.js';
 const SAVE_KEY = 'mythic-arena-save';
 
 const state = {
-  side: null,                    // "hero" | "creature"
+  side: null,
   wave: 1,
   theme: THEME_ROTATION[0],
   auto: { running: false, speedMs: 800 },
-  player: null,                  // Player instance
+  player: null,
   lists: { hero: [], creature: [] },
   shop: new Shop(),
   inventory: { items: [], stash: [], buyback: [] },
   ui: {
-    // inventory panel UI state
     invFilterRarity: 'all',
     invFilterSlot: 'all',
-    invSortKey: 'rarity',      // rarity|slot|price
-    invSortDir: 'desc',        // asc|desc
-    // shop panel UI state
+    invSortKey: 'rarity',
+    invSortDir: 'desc',
     shopFilterRarity: 'all',
     shopFilterSlot: 'all',
     shopSortKey: 'rarity',
@@ -38,31 +36,23 @@ const state = {
   }
 };
 
-window.state = state; // for debugging
+window.state = state; // debug hook
 
-// --- helpers ---
-function prngPickN(arr, n) {
-  const prng = seeded(Date.now());
+// ---------- List initialization that cannot fail ----------
+function pickNUnique(arr, n, rand) {
   const set = new Set();
   while (set.size < Math.min(n, arr.length)) {
-    set.add(arr[Math.floor(prng() * arr.length)]);
+    set.add(arr[Math.floor(rand() * arr.length)]);
   }
   return Array.from(set);
 }
-
-function initLists() {
-  state.lists.hero = prngPickN(HEROES, 10);
-  state.lists.creature = prngPickN(CREATURES, 10);
-}
-
-function ensureLists() {
-  if (!state.lists || !Array.isArray(state.lists.hero) || state.lists.hero.length === 0) {
-    state.lists = state.lists || {};
-    state.lists.hero = prngPickN(HEROES, 10);
+function initLists(force = false) {
+  const rand = seeded(Date.now());
+  if (force || !Array.isArray(state.lists?.hero) || state.lists.hero.length === 0) {
+    state.lists.hero = pickNUnique(HEROES, 10, rand);
   }
-  if (!state.lists || !Array.isArray(state.lists.creature) || state.lists.creature.length === 0) {
-    state.lists = state.lists || {};
-    state.lists.creature = prngPickN(CREATURES, 10);
+  if (force || !Array.isArray(state.lists?.creature) || state.lists.creature.length === 0) {
+    state.lists.creature = pickNUnique(CREATURES, 10, rand);
   }
 }
 
@@ -80,10 +70,10 @@ function save() {
 }
 
 function load() {
-  const s = localStorage.getItem(SAVE_KEY);
-  if (!s) return false;
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
   try {
-    const data = JSON.parse(s);
+    const data = JSON.parse(raw);
     state.side = data.side ?? null;
     state.wave = data.wave ?? 1;
     state.theme = data.theme ?? THEME_ROTATION[0];
@@ -91,7 +81,8 @@ function load() {
     state.inventory = data.inventory || state.inventory;
     state.player = data.player ? Player.deserialize(data.player) : null;
     state.lists = data.lists || { hero: [], creature: [] };
-    ensureLists(); // <- make sure selects are never empty
+    // Ensure lists even if save was bad
+    initLists(false);
     return true;
   } catch {
     return false;
@@ -105,18 +96,14 @@ function clearSave() {
 // ---------- Game Over overlay ----------
 function showGameOver() {
   state.auto.running = false;
-
   let overlay = document.getElementById('gameover-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'gameover-overlay';
-    overlay.style.position = 'fixed';
-    overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.85)';
-    overlay.style.display = 'flex';
-    overlay.style.alignItems = 'center';
-    overlay.style.justifyContent = 'center';
-    overlay.style.zIndex = '9999';
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999'
+    });
     overlay.innerHTML = `
       <div style="background:#141414;border:1px solid #2a2a2a;border-radius:14px;padding:28px;max-width:480px;text-align:center;">
         <h2 style="margin:0 0 12px;font-size:28px;">Game Over</h2>
@@ -136,43 +123,32 @@ let autoTimer = null;
 async function nextWave(mode = 'normal') {
   if (!state.player) return;
 
-  // roll & resolve (provided by existing global systems)
   const { isBoss, isElite, isSuper, enemies, diff } = await window.waveManager.roll(state);
-
   const res = await window.combat.resolve({
-    player: state.player,
-    mode,
-    diff,
-    enemies,
-    isBoss, isElite, isSuper
+    player: state.player, mode, diff, enemies, isBoss, isElite, isSuper
   });
 
-  // Gold / XP
   state.player.gold += Math.floor(res.goldGained * (1 + state.player.goldPct()));
-  const ding = state.player.addXP(res.xpGained);
+  state.player.addXP(res.xpGained);
 
-  // Death handling
   if (state.player.hp <= 0) {
-    const log = $('#log');
     const li = document.createElement('li');
     li.textContent = `Defeated on wave ${state.wave}.`;
-    log.prepend(li);
+    $('#log').prepend(li);
     renderAll(state);
     showGameOver();
     return;
   }
 
-  // Loot
   if (res.kills > 0) {
     const loot = createLoot({ isBoss, isElite, isSuper });
     state.inventory.items.push(...loot);
   }
 
-  // Next wave
   state.wave += 1;
   state.theme = themeForWave(state.wave);
 
-  // Auto restock every 20 waves
+  // Auto restock every 20
   if (state.wave % 20 === 0) {
     state.shop.refresh(true);
   }
@@ -195,18 +171,14 @@ function toggleAuto() {
   }
 }
 
-// ---------- Start Run ----------
 function startRun() {
   const name = $('#input-name')?.value?.trim();
-  const side = $('#select-side')?.value;
-  const classPick =
-    side === 'hero' ? $('#select-hero')?.value :
-    side === 'creature' ? $('#select-creature')?.value : '';
-
-  if (!name || !classPick) return;
+  const side = ($('#select-side')?.value || '').toLowerCase();
+  const pick = side === 'hero' ? $('#select-hero')?.value : $('#select-creature')?.value;
+  if (!name || !pick) return;
 
   state.side = side;
-  state.player = new Player(name, classPick);
+  state.player = new Player(name, pick);
   state.wave = 1;
   state.theme = THEME_ROTATION[0];
 
@@ -220,69 +192,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (hash === 'new') {
     clearSave();
-    initLists();
+    initLists(true);
   } else if (hash === 'load') {
-    if (!load()) {
-      initLists();
-    }
+    if (!load()) initLists(true);
   } else {
-    // default: try load, otherwise new lists
-    if (!load()) {
-      initLists();
-    }
+    if (!load()) initLists(true);
   }
-  ensureLists(); // belt & suspenders
+
+  // One more belt-and-suspenders: if lists are still empty, fill now.
+  initLists(false);
 
   renderAll(state);
 
-  // Buttons
+  // Controls
   $('#btn-start')?.addEventListener('click', startRun);
   $('#btn-next')?.addEventListener('click', () => nextWave('normal'));
   $('#btn-special')?.addEventListener('click', () => nextWave('special'));
   $('#btn-auto')?.addEventListener('click', toggleAuto);
   $('#range-speed')?.addEventListener('input', (e) => {
-    const v = Number(e.target.value); // 0..100 slider mapped to 100..1000 ms
+    const v = Number(e.target.value);
     state.auto.speedMs = 100 + (1000 - 100) * (100 - v) / 100;
   });
 
-  // Panels setup (once)
+  // Panels
   setupEquipmentPanel(state);
   setupInventoryPanel(state);
   setupShopPanel(state);
 
-  // Top bar modals
-  $('#btn-equipment')?.addEventListener('click', () => {
-    openModal('dlg-equipment');
-    renderEquipment(state);
-  });
-  $('#btn-inventory')?.addEventListener('click', () => {
-    openModal('dlg-inventory');
-    renderInventory(state);
-  });
-  $('#btn-shop')?.addEventListener('click', () => {
-    openModal('dlg-shop');
-    renderShop(state);
-  });
+  // Modals
+  $('#btn-equipment')?.addEventListener('click', () => { openModal('dlg-equipment'); renderEquipment(state); });
+  $('#btn-inventory')?.addEventListener('click', () => { openModal('dlg-inventory'); renderInventory(state); });
+  $('#btn-shop')?.addEventListener('click', () => { openModal('dlg-shop'); renderShop(state); });
 
-  // Save / Load
+  // Save/Load
   $('#btn-save')?.addEventListener('click', save);
-  $('#btn-load')?.addEventListener('click', () => {
-    const ok = load();
-    renderAll(state);
-  });
+  $('#btn-load')?.addEventListener('click', () => { load(); renderAll(state); });
 
-  // Modal close buttons
+  // Close buttons & ESC
   document.querySelectorAll('[data-close]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const id = e.currentTarget.getAttribute('data-close');
-      closeModal(id);
-    });
+    btn.addEventListener('click', (e) => closeModal(e.currentTarget.getAttribute('data-close')));
   });
-
-  // ESC to close any open modal
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.modal[open]').forEach(m => m.removeAttribute('open'));
-    }
+    if (e.key === 'Escape') document.querySelectorAll('.modal[open]').forEach(m => m.removeAttribute('open'));
   });
 });

@@ -1,58 +1,52 @@
-import { $ } from "./dom.js";
-import { groupByTheme } from "../systems/themeManager.js";
-import { HEROES, CREATURES } from "../systems/constants.js";
+// ui/render.js
+import { $, el, clear } from './dom.js';
+import { HEROES, CREATURES, THEME_ROTATION } from '../systems/constants.js';
 
-// Build selects (with optgroups) and keep them non-empty
-export function buildSelect(state){
-  const heroSelect = $("#select-hero");
-  const creatureSelect = $("#select-creature");
-  heroSelect.innerHTML = ""; creatureSelect.innerHTML = "";
-
-  const heroList = (state?.lists?.hero?.length ? state.lists.hero : HEROES);
-  const creatureList = (state?.lists?.creature?.length ? state.lists.creature : CREATURES);
-
-  // Correct grouping by proper side
-  const heroGrouped = groupByTheme(heroList, "hero");
-  const creatureGrouped = groupByTheme(creatureList, "creature");
-
-  const fill = (sel, grouped) => {
-    const themes = Object.keys(grouped);
-    if (!themes.length) {
-      (grouped.Misc || []).forEach(n=>{
-        const opt = document.createElement("option");
-        opt.textContent = n; opt.value = n;
-        sel.append(opt);
-      });
-      return;
-    }
-    for (const [theme, names] of Object.entries(grouped)) {
-      const optg = document.createElement("optgroup"); optg.label = theme;
-      names.forEach(n => { const opt = document.createElement("option"); opt.textContent=n; opt.value = n; optg.append(opt); });
-      sel.append(optg);
-    }
-  };
-
-  fill(heroSelect, heroGrouped);
-  fill(creatureSelect, creatureGrouped);
+// Build selects directly from state.lists; fallback to constants if empty.
+// No theme grouping here (to eliminate the breakage source); flat but guaranteed visible.
+function ensureLists(state) {
+  if (!state.lists) state.lists = { hero: [], creature: [] };
+  if (!Array.isArray(state.lists.hero) || state.lists.hero.length === 0) {
+    state.lists.hero = HEROES.slice(0, 10);
+  }
+  if (!Array.isArray(state.lists.creature) || state.lists.creature.length === 0) {
+    state.lists.creature = CREATURES.slice(0, 10);
+  }
 }
 
-export function renderAll(state){
-  // Rebuild selects each render (safe) — guarantees not empty
-  buildSelect(state);
+function fillSelect(selectEl, names) {
+  clear(selectEl);
+  for (const name of names) {
+    const opt = el('option', '', name);
+    opt.value = name;
+    selectEl.appendChild(opt);
+  }
+}
 
-  // Basic stat refresh (safe defaults)
+export function renderAll(state) {
+  // Ensure lists exist no matter what
+  ensureLists(state);
+
+  // Picklists (flat, robust)
+  const selHero = $('#select-hero');
+  const selCreature = $('#select-creature');
+  if (selHero) fillSelect(selHero, state.lists.hero);
+  if (selCreature) fillSelect(selCreature, state.lists.creature);
+
+  // Stats and header info (safe defaults)
   const p = state.player;
-  $("#stat-wave").textContent = String(state.wave ?? 1);
-  $("#stat-theme").textContent = state.theme ?? "—";
-  $("#stat-player").textContent = p?.name ?? "—";
-  $("#stat-class").textContent = p?.className ?? "—";
-  $("#stat-hp").textContent = `${Math.max(0, Math.ceil(p?.hp ?? 0))} / ${(p?.maxHP?.() ?? 100)}`;
-  $("#stat-atk").textContent = Math.ceil(p?.atk?.() ?? 0);
-  $("#stat-def").textContent = Math.ceil(p?.def?.() ?? 0);
-  $("#stat-level").textContent = p?.level ?? 1;
-  $("#stat-gold").textContent = Math.floor(p?.gold ?? 0);
+  $('#stat-wave').textContent  = String(state.wave ?? 1);
+  $('#stat-theme').textContent = state.theme ?? THEME_ROTATION[0];
+  $('#stat-player').textContent = p?.name ?? '—';
+  $('#stat-class').textContent  = p?.className ?? '—';
+  $('#stat-hp').textContent     = `${Math.max(0, Math.ceil(p?.hp ?? 0))} / ${(p?.maxHP?.() ?? 100)}`;
+  $('#stat-atk').textContent    = `${Math.ceil(p?.atk?.() ?? 0)}`;
+  $('#stat-def').textContent    = `${Math.ceil(p?.def?.() ?? 0)}`;
+  $('#stat-level').textContent  = `${p?.level ?? 1}`;
+  $('#stat-gold').textContent   = `${Math.floor(p?.gold ?? 0)}`;
 
   const need = p?.xpNeeded?.() ?? 1;
-  const pct = need ? Math.min(99.5, (p?.xp ?? 0) / need * 100) : 100;
-  document.getElementById("xp-fill").style.width = `${pct}%`;
+  const fill = need ? Math.min(1, (p?.xp ?? 0) / need) : 1;
+  const bar = document.getElementById('xp-fill');
+  if (bar) bar.style.width = `${Math.max(3, Math.min(100, fill * 100))}%`;
 }
