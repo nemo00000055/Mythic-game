@@ -1,0 +1,28 @@
+/* Opening/Loading shared styles */
+.boot-center {
+  min-height: 70vh;
+  margin: 0 auto;
+  padding: 2rem;
+  max-width: 720px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+.boot-card {
+  width: 100%;
+  padding: 2rem;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+.boot-row { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+.boot-muted { opacity: .8; }
+.boot-hint { opacity: .6; font-size: .9rem; margin-top: .75rem; }
+
+/* Buttons */
+.btn { display:inline-block; padding:.65rem 1.1rem; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.06); color:#e8eaf2; cursor:pointer; text-decoration:none; }
+.btn.primary { border-color: rgba(99,102,241,.5); background: rgba(99,102,241,.15); }
+.btn:hover { filter: brightness(1.05); }
+.btn.disabled, .btn[aria-disabled="true"] { opacity:.5; cursor:not-allowed; pointer-events: none; }
