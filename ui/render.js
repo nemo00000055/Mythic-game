@@ -1,63 +1,104 @@
-import { $ } from "./dom.js";
-import { groupByTheme } from "../systems/themeManager.js";
-import { HEROES, CREATURES } from "../systems/constants.js";
+// ui/render.js
+import { $, $$, el, clear } from './dom.js';
+import { groupByTheme, nameTheme } from '../systems/themeManager.js';
+import { THEME_ROTATION } from '../systems/constants.js';
 
-export function buildSelect(state){
-  const side = $("#select-side").value;
-  const heroSelect = $("#select-hero");
-  const creatureSelect = $("#select-creature");
-  heroSelect.innerHTML = ""; creatureSelect.innerHTML = "";
+function buildSelect(selectEl, side, list, currentTheme) {
+  clear(selectEl);
 
-  const heroList = (state?.lists?.hero?.length ? state.lists.hero : HEROES).slice(0, 999);
-  const creatureList = (state?.lists?.creature?.length ? state.lists.creature : CREATURES).slice(0, 999);
-
-  const heroGrouped = groupByTheme(heroList, "creature");
-  const creatureGrouped = groupByTheme(creatureList, "hero");
-
-  for(const [theme,names] of Object.entries(heroGrouped)){
-    const optg = document.createElement("optgroup"); optg.label = theme;
-    names.forEach(n => { const opt = document.createElement("option"); opt.textContent=n; opt.value = n; optg.append(opt); });
-    heroSelect.append(optg);
-  }
-  for(const [theme,names] of Object.entries(creatureGrouped)){
-    const optg = document.createElement("optgroup"); optg.label = theme;
-    names.forEach(n => { const opt = document.createElement("option"); opt.textContent=n; opt.value = n; optg.append(opt); });
-    creatureSelect.append(optg);
+  // Group into <optgroup>s by theme with fallback to flat list
+  const grouped = groupByTheme(list, side);
+  const themes = Object.keys(grouped);
+  if (themes.length === 0) {
+    list.forEach(name => {
+      const opt = el('option', '', name);
+      opt.value = name;
+      selectEl.appendChild(opt);
+    });
+    return;
   }
 
-  if(!heroSelect.children.length){ HEROES.forEach(n=>heroSelect.append(new Option(n,n))); }
-  if(!creatureSelect.children.length){ CREATURES.forEach(n=>creatureSelect.append(new Option(n,n))); }
-
-  heroSelect.disabled = (side!=="hero");
-  creatureSelect.disabled = (side!=="creature");
-  if(side==="hero") creatureSelect.selectedIndex = -1;
-  if(side==="creature") heroSelect.selectedIndex = -1;
+  themes.forEach(theme => {
+    const og = document.createElement('optgroup');
+    og.label = theme;
+    grouped[theme].forEach(name => {
+      const opt = el('option', '', name);
+      opt.value = name;
+      og.appendChild(opt);
+    });
+    selectEl.appendChild(og);
+  });
 }
 
-export function renderAll(state){
-  $("#stat-player").textContent = state.player?.name || "—";
-  $("#stat-class").textContent  = state.player?.className || "—";
-  $("#stat-gold").textContent   = (state.player?.gold|0).toLocaleString();
-  $("#stat-level").textContent  = state.player?.level ?? 1;
-  $("#stat-wave").textContent   = state.wave;
-  $("#stat-theme").textContent  = state.theme || "—";
-  $("#stat-nextboss").textContent = nextBossIn(state.wave);
+export function renderAll(state) {
+  // Stats chips, xp, wave label, preview, buttons enablement
+  $('#stat-wave').textContent = String(state.wave);
+  $('#stat-theme').textContent = state.theme;
+  const nextBossIn = 5 - ((state.wave - 1) % 5 || 5);
+  $('#stat-nextboss').textContent = `${nextBossIn}`;
 
-  const hp = state.player?.hp ?? 0;
-  const max = state.player?.maxHP() ?? 100;
-  $("#stat-hp").textContent = `${hp}/${max}`;
-  $("#stat-atk").textContent = state.player?.atk() ?? 0;
-  $("#stat-def").textContent = state.player?.def() ?? 0;
+  const p = state.player;
+  if (p) {
+    $('#stat-player').textContent = p.name || 'Unnamed';
+    $('#stat-class').textContent = p.className;
+    $('#stat-hp').textContent = `${Math.max(0, Math.ceil(p.hp))} / ${p.maxHP()}`;
+    $('#stat-atk').textContent = `${Math.ceil(p.atk())}`;
+    $('#stat-def').textContent = `${Math.ceil(p.def())}`;
+    $('#stat-level').textContent = `${p.level}`;
+    $('#stat-gold').textContent = `${Math.floor(p.gold)}`;
+    // XP bar
+    const need = p.xpNeeded();
+    const fill = need > 0 ? (p.xp / need) : 1;
+    $('#xp-fill').style.width = `${Math.max(3, Math.min(100, fill * 100))}%`;
+  }
 
-  const need = state.player?.xpNeeded() ?? 1;
-  const pct = need ? Math.min(99.5, (state.player?.xp ?? 0) / need * 100) : 100;
-  document.getElementById("xp-fill").style.width = `${pct}%`;
+  // Build selects with mutual exclusivity & side sync
+  const selHero = $('#select-hero');
+  const selCreature = $('#select-creature');
+  buildSelect(selHero, 'hero', state.lists.hero, state.theme);
+  buildSelect(selCreature, 'creature', state.lists.creature, state.theme);
 
-  document.getElementById("btn-next").disabled = !state.started;
-  const ready = state.player?.specialReady?.() ?? false;
-  document.getElementById("btn-special").disabled = !state.started || !ready;
+  // ---------- NEW: Mutual exclusivity wiring ----------
+  // Choose hero: set side=hero, clear creature select value
+  selHero.addEventListener('change', () => {
+    if (selHero.value) {
+      $('#select-side').value = 'hero';
+      selCreature.selectedIndex = -1; // clear the other
+    }
+    validateStart(state);
+  });
 
-  document.getElementById("nextwave").textContent = state.nextPreviewText || "—";
+  // Choose creature: set side=creature, clear hero select value
+  selCreature.addEventListener('change', () => {
+    if (selCreature.value) {
+      $('#select-side').value = 'creature';
+      selHero.selectedIndex = -1;
+    }
+    validateStart(state);
+  });
+
+  // Side select keeps only one list active
+  $('#select-side').addEventListener('change', (e) => {
+    const v = e.target.value;
+    if (v === 'hero') {
+      selCreature.selectedIndex = -1;
+    } else if (v === 'creature') {
+      selHero.selectedIndex = -1;
+    }
+    validateStart(state);
+  });
+
+  // Start button enabled only if a name and one class selected
+  validateStart(state);
 }
 
-function nextBossIn(wave){ const mod = wave % 5; return mod===0 ? 0 : (5 - mod); }
+function validateStart(state) {
+  const name = $('#input-name')?.value?.trim();
+  const side = $('#select-side')?.value;
+  const classPick =
+    side === 'hero' ? $('#select-hero')?.value :
+    side === 'creature' ? $('#select-creature')?.value : '';
+
+  const ok = !!name && !!classPick;
+  $('#btn-start').disabled = !ok;
+}
