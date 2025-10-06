@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mythic Arena — Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🜲 Mythic Arena</div>
+    <nav class="top-actions">
+      <button id="btn-equipment" class="btn">Equipment / Talents</button>
+      <button id="btn-inventory" class="btn">Inventory / Stash</button>
+      <button id="btn-shop" class="btn">Shop</button>
+      <button id="btn-save" class="btn">Save</button>
+      <button id="btn-load" class="btn">Load</button>
+      <div class="gold-chip">Gold: <span id="stat-gold">0</span> 🪙</div>
+    </nav>
+  </header>
+
+  <main class="shell">
+    <section class="picker">
+      <div class="row">
+        <label>Name</label>
+        <input id="input-name" type="text" placeholder="Enter your champion name…" />
+      </div>
+      <div class="row">
+        <label>Side</label>
+        <select id="select-side">
+          <option value="hero">Hero</option>
+          <option value="creature">Creature</option>
+        </select>
+      </div>
+      <div class="row grid-2">
+        <div>
+          <label>Pick a Hero</label>
+          <select id="select-hero"></select>
+        </div>
+        <div>
+          <label>Pick a Mythic Creature</label>
+          <select id="select-creature"></select>
+        </div>
+      </div>
+      <div class="row controls">
+        <button id="btn-start" class="btn primary">Start</button>
+        <button id="btn-next" class="btn" disabled>Next Wave</button>
+        <button id="btn-special" class="btn" disabled>Special</button>
+        <button id="btn-auto" class="btn">Auto: Off</button>
+        <label class="speed">
+          Speed
+          <input id="range-speed" type="range" min="0" max="100" value="40" />
+        </label>
+      </div>
+    </section>
+
+    <section class="status">
+      <div class="chips">
+        <div class="chip">Player: <span id="stat-player">—</span></div>
+        <div class="chip">Class: <span id="stat-class">—</span></div>
+        <div class="chip">HP: <span id="stat-hp">—</span></div>
+        <div class="chip">ATK: <span id="stat-atk">—</span></div>
+        <div class="chip">DEF: <span id="stat-def">—</span></div>
+        <div class="chip">Level: <span id="stat-level">1</span></div>
+        <div class="chip">Wave: <span id="stat-wave">1</span></div>
+        <div class="chip">Theme: <span id="stat-theme">—</span></div>
+        <div class="chip">Next Boss: <span id="stat-nextboss">5</span></div>
+      </div>
+
+      <div class="xpbar">
+        <div id="xp-fill" class="xpfill" style="width:0%"></div>
+      </div>
+
+      <div class="nextwave">
+        Next Wave Preview: <span id="nextwave">—</span>
+      </div>
+    </section>
+
+    <section class="log-wrap">
+      <h3>Battle Log</h3>
+      <ul id="log" class="log"></ul>
+    </section>
+  </main>
+
+  <!-- Equipment / Talents -->
+  <dialog id="dlg-equipment" class="modal">
+    <div class="modal-head">
+      <h3>Equipment & Talents</h3>
+      <button class="btn ghost" data-close="dlg-equipment">Close</button>
+    </div>
+    <div class="modal-body" id="panel-equipment"></div>
+  </dialog>
+
+  <!-- Inventory / Stash -->
+  <dialog id="dlg-inventory" class="modal">
+    <div class="modal-head">
+      <h3>Inventory & Stash</h3>
+      <button class="btn ghost" data-close="dlg-inventory">Close</button>
+    </div>
+    <div class="modal-body" id="panel-inventory"></div>
+  </dialog>
+
+  <!-- Shop -->
+  <dialog id="dlg-shop" class="modal">
+    <div class="modal-head">
+      <h3>Shop</h3>
+      <button class="btn ghost" data-close="dlg-shop">Close</button>
+    </div>
+    <div class="modal-body" id="panel-shop"></div>
+  </dialog>
+
+  <!-- Keep your exact game bundle paths -->
+  <script type="module" src="./src/main.js"></script>
+
+  <!-- Small helper: if URL has #load, auto-click your Load button when ready -->
+  <script>
+    (function () {
+      const mode = (location.hash || "").replace("#","");
+      if (mode !== "load") return;
+      const tryClick = () => {
+        const btn = document.getElementById("btn-load");
+        if (btn) {
+          // sanity check: only try if a save actually exists
+          if (localStorage.getItem("mythic-arena-save")) btn.click();
+          // clear hash so refreshes don’t re-trigger
+          history.replaceState(null, "", location.pathname);
+        } else {
+          requestAnimationFrame(tryClick);
+        }
+      };
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        tryClick();
+      } else {
+        document.addEventListener("DOMContentLoaded", tryClick, { once:true });
+      }
+    })();
+  </script>
+</body>
+</html>

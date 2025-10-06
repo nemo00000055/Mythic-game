@@ -6,111 +6,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./css/styles.css" />
+
+  <!-- Minimal styles for the landing page only -->
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg:#0f1117;--panel:#141925;--text:#e8ecf4;--muted:#98a1b3;
+      --accent:#7c4dff;--accent-2:#b388ff;--ring:rgba(124,77,255,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 70% -10%, #1a2030 0, #111624 60%, #0b0f18 100%);
+      display:grid;place-items:center;
+    }
+    .card{
+      width:min(780px,92vw);
+      background:linear-gradient(180deg,#171c2a 0,#121726 100%);
+      border:1px solid #232943;border-radius:20px;
+      box-shadow:0 10px 40px rgba(0,0,0,.45);
+      padding:28px 28px 22px;
+    }
+    .brand{font-weight:800;letter-spacing:.3px;font-size:22px;display:flex;gap:10px;align-items:center}
+    .brand .logo{font-size:22px}
+    .muted{color:var(--muted)}
+    .row{margin-top:18px}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .btn{
+      appearance:none;border:1px solid #2a2f42;background:#181c2b;color:#eaeefe;border-radius:12px;
+      padding:12px 16px;font-weight:600;cursor:pointer;
+      transition:transform .02s ease,box-shadow .2s ease,border-color .2s ease
+    }
+    .btn:hover{border-color:#3a4060}
+    .btn.primary{background:linear-gradient(180deg,var(--accent) 0,#5f2fff 100%);border-color:#6c48ff}
+    .btn.primary:focus-visible,.btn:focus-visible{outline:0;box-shadow:0 0 0 4px var(--ring)}
+    .chip{display:inline-flex;align-items:center;gap:8px;color:#c9d2e3;background:#15192a;border:1px solid #232943;border-radius:999px;padding:8px 10px}
+    .loader{--s:12px;width:calc(var(--s)*8);height:var(--s);border-radius:999px;background:#24304b;overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px #2f3b5a}
+    .loader::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 0 20%,var(--accent-2) 50%,transparent 80% 100%);animation:load 1.1s linear infinite}
+    @keyframes load{from{transform:translateX(-60%)}to{transform:translateX(160%)}}
+    .footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:16px;color:#a8b2c3;font-size:12px}
+    .notice{font-size:12px;color:#95a1b6}
+    .hidden{display:none !important}
+  </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">🜲 Mythic Arena</div>
-    <nav class="top-actions">
-      <button id="btn-equipment" class="btn">Equipment / Talents</button>
-      <button id="btn-inventory" class="btn">Inventory / Stash</button>
-      <button id="btn-shop" class="btn">Shop</button>
-      <button id="btn-save" class="btn">Save</button>
-      <button id="btn-load" class="btn">Load</button>
-      <div class="gold-chip">Gold: <span id="stat-gold">0</span> 🪙</div>
-    </nav>
-  </header>
+  <main class="card">
+    <div class="brand"><span class="logo">🜲</span> Mythic Arena</div>
+    <div class="row muted">Welcome! Start a new run or continue from your last save (if one exists on this browser).</div>
 
-  <main class="shell">
-    <section class="picker">
-      <div class="row">
-        <label>Name</label>
-        <input id="input-name" type="text" placeholder="Enter your champion name…" />
-      </div>
-      <div class="row">
-        <label>Side</label>
-        <select id="select-side">
-          <option value="hero">Hero</option>
-          <option value="creature">Creature</option>
-        </select>
-      </div>
-      <div class="row grid-2">
-        <div>
-          <label>Pick a Hero</label>
-          <select id="select-hero"></select>
-        </div>
-        <div>
-          <label>Pick a Mythic Creature</label>
-          <select id="select-creature"></select>
-        </div>
-      </div>
-      <div class="row controls">
-        <button id="btn-start" class="btn primary">Start</button>
-        <button id="btn-next" class="btn" disabled>Next Wave</button>
-        <button id="btn-special" class="btn" disabled>Special</button>
-        <button id="btn-auto" class="btn">Auto: Off</button>
-        <label class="speed">
-          Speed
-          <input id="range-speed" type="range" min="0" max="100" value="40" />
-        </label>
-      </div>
-    </section>
+    <div class="row btns">
+      <button id="btn-new"  class="btn primary">Start New Game</button>
+      <button id="btn-load" class="btn">Load Saved Game</button>
+    </div>
 
-    <section class="status">
-      <div class="chips">
-        <div class="chip">Player: <span id="stat-player">—</span></div>
-        <div class="chip">Class: <span id="stat-class">—</span></div>
-        <div class="chip">HP: <span id="stat-hp">—</span></div>
-        <div class="chip">ATK: <span id="stat-atk">—</span></div>
-        <div class="chip">DEF: <span id="stat-def">—</span></div>
-        <div class="chip">Level: <span id="stat-level">1</span></div>
-        <div class="chip">Wave: <span id="stat-wave">1</span></div>
-        <div class="chip">Theme: <span id="stat-theme">—</span></div>
-        <div class="chip">Next Boss: <span id="stat-nextboss">5</span></div>
-      </div>
+    <div id="loading" class="row hidden">
+      <div class="chip"><span class="loader"></span> <strong>Preparing assets…</strong></div>
+    </div>
 
-      <div class="xpbar">
-        <div id="xp-fill" class="xpfill" style="width:0%"></div>
-      </div>
-
-      <div class="nextwave">
-        Next Wave Preview: <span id="nextwave">—</span>
-      </div>
-    </section>
-
-    <section class="log-wrap">
-      <h3>Battle Log</h3>
-      <ul id="log" class="log"></ul>
-    </section>
+    <div class="footer">
+      <div class="notice">Tip: you can always return to this screen via <code>/index.html</code>.</div>
+      <div class="muted">v3 welcome</div>
+    </div>
   </main>
 
-  <!-- Equipment / Talents -->
-  <dialog id="dlg-equipment" class="modal">
-    <div class="modal-head">
-      <h3>Equipment & Talents</h3>
-      <button class="btn ghost" data-close="dlg-equipment">Close</button>
-    </div>
-    <div class="modal-body" id="panel-equipment"></div>
-  </dialog>
-
-  <!-- Inventory / Stash -->
-  <dialog id="dlg-inventory" class="modal">
-    <div class="modal-head">
-      <h3>Inventory & Stash</h3>
-      <button class="btn ghost" data-close="dlg-inventory">Close</button>
-    </div>
-    <div class="modal-body" id="panel-inventory"></div>
-  </dialog>
-
-  <!-- Shop -->
-  <dialog id="dlg-shop" class="modal">
-    <div class="modal-head">
-      <h3>Shop</h3>
-      <button class="btn ghost" data-close="dlg-shop">Close</button>
-    </div>
-    <div class="modal-body" id="panel-shop"></div>
-  </dialog>
-
-  <script type="module" src="./src/main.js"></script>
+  <script>
+    const loading = document.getElementById('loading');
+    function go(url){
+      loading.classList.remove('hidden');
+      setTimeout(()=>{ window.location.href = url; }, 250);
+    }
+    document.getElementById('btn-new').addEventListener('click', () => {
+      go('./game.html#new');
+    });
+    document.getElementById('btn-load').addEventListener('click', () => {
+      const hasSave = !!localStorage.getItem('mythic-arena-save');
+      go(hasSave ? './game.html#load' : './game.html');
+    });
+  </script>
 </body>
 </html>
