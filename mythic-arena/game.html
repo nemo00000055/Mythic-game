@@ -4,14 +4,9 @@
   <meta charset="utf-8" />
   <title>Mythic Arena — Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="./css/styles.css" />
-  <style>
-    body { background:#0b0e14; color:#e8eaf2; font-family: Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
-  </style>
 </head>
 <body>
   <header class="topbar">
@@ -116,9 +111,31 @@
     <div class="modal-body" id="panel-shop"></div>
   </dialog>
 
-  <!-- Entry helper MUST load before main.js to trigger start/load path -->
-  <script type="module" src="./src/game-entry.js"></script>
-  <!-- Your existing game logic (unchanged) -->
+  <!-- Keep your exact game bundle paths -->
   <script type="module" src="./src/main.js"></script>
+
+  <!-- Small helper: if URL has #load, auto-click your Load button when ready -->
+  <script>
+    (function () {
+      const mode = (location.hash || "").replace("#","");
+      if (mode !== "load") return;
+      const tryClick = () => {
+        const btn = document.getElementById("btn-load");
+        if (btn) {
+          // sanity check: only try if a save actually exists
+          if (localStorage.getItem("mythic-arena-save")) btn.click();
+          // clear hash so refreshes don’t re-trigger
+          history.replaceState(null, "", location.pathname);
+        } else {
+          requestAnimationFrame(tryClick);
+        }
+      };
+      if (document.readyState === "complete" || document.readyState === "interactive") {
+        tryClick();
+      } else {
+        document.addEventListener("DOMContentLoaded", tryClick, { once:true });
+      }
+    })();
+  </script>
 </body>
 </html>

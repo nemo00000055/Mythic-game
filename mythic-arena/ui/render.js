@@ -1,66 +1,63 @@
 import { $ } from "./dom.js";
+import { groupByTheme } from "../systems/themeManager.js";
+import { HEROES, CREATURES } from "../systems/constants.js";
 
-/**
- * Called only after Start (or after a Load that fully restores a running game).
- * You already have the rest of your game setup; this function only paints HUD safely.
- */
-export function renderBattleHUD({ initialName, initialSide, initialClassName }) {
-  const st = window.state || {};
-  st.player = st.player || {
-    // minimal fallback so HUD doesn't explode if your boot code hasn’t run yet
-    name: initialName || "—",
-    className: initialClassName || "—",
-    level: 1,
-    hp: 100,
-    maxHP: () => 100,
-    atk: 0,
-    def: 0
-  };
+export function buildSelect(state){
+  const side = $("#select-side").value;
+  const heroSelect = $("#select-hero");
+  const creatureSelect = $("#select-creature");
+  heroSelect.innerHTML = ""; creatureSelect.innerHTML = "";
 
-  // If you have a real boot/ensure function, call it here before painting:
-  if (typeof window.bootBattleIfNeeded === "function") {
-    window.bootBattleIfNeeded({ name: initialName, side: initialSide, className: initialClassName });
+  const heroList = (state?.lists?.hero?.length ? state.lists.hero : HEROES).slice(0, 999);
+  const creatureList = (state?.lists?.creature?.length ? state.lists.creature : CREATURES).slice(0, 999);
+
+  const heroGrouped = groupByTheme(heroList, "creature");
+  const creatureGrouped = groupByTheme(creatureList, "hero");
+
+  for(const [theme,names] of Object.entries(heroGrouped)){
+    const optg = document.createElement("optgroup"); optg.label = theme;
+    names.forEach(n => { const opt = document.createElement("option"); opt.textContent=n; opt.value = n; optg.append(opt); });
+    heroSelect.append(optg);
+  }
+  for(const [theme,names] of Object.entries(creatureGrouped)){
+    const optg = document.createElement("optgroup"); optg.label = theme;
+    names.forEach(n => { const opt = document.createElement("option"); opt.textContent=n; opt.value = n; optg.append(opt); });
+    creatureSelect.append(optg);
   }
 
-  renderAllSafely();
+  if(!heroSelect.children.length){ HEROES.forEach(n=>heroSelect.append(new Option(n,n))); }
+  if(!creatureSelect.children.length){ CREATURES.forEach(n=>creatureSelect.append(new Option(n,n))); }
+
+  heroSelect.disabled = (side!=="hero");
+  creatureSelect.disabled = (side!=="creature");
+  if(side==="hero") creatureSelect.selectedIndex = -1;
+  if(side==="creature") heroSelect.selectedIndex = -1;
 }
 
-/** Safe, no-throw HUD paint */
-export function renderAllSafely() {
-  const st = window.state || {};
-  const p = st.player || {};
+export function renderAll(state){
+  $("#stat-player").textContent = state.player?.name || "—";
+  $("#stat-class").textContent  = state.player?.className || "—";
+  $("#stat-gold").textContent   = (state.player?.gold|0).toLocaleString();
+  $("#stat-level").textContent  = state.player?.level ?? 1;
+  $("#stat-wave").textContent   = state.wave;
+  $("#stat-theme").textContent  = state.theme || "—";
+  $("#stat-nextboss").textContent = nextBossIn(state.wave);
 
-  // Support both method and number-property shapes
-  const val = (v, fallback=0) =>
-    (typeof v === "function" ? v() : (v ?? fallback));
+  const hp = state.player?.hp ?? 0;
+  const max = state.player?.maxHP() ?? 100;
+  $("#stat-hp").textContent = `${hp}/${max}`;
+  $("#stat-atk").textContent = state.player?.atk() ?? 0;
+  $("#stat-def").textContent = state.player?.def() ?? 0;
 
-  const name = p.name ?? "—";
-  const cls = p.className ?? "—";
-  const lvl = p.level ?? 1;
-  const hp  = p.hp ?? 0;
-  const mx  = val(p.maxHP, 100);
-  const atk = val(p.atk, 0);
-  const def = val(p.def, 0);
+  const need = state.player?.xpNeeded() ?? 1;
+  const pct = need ? Math.min(99.5, (state.player?.xp ?? 0) / need * 100) : 100;
+  document.getElementById("xp-fill").style.width = `${pct}%`;
 
-  $("#stat-player").textContent = `Player: ${name}`;
-  $("#stat-class").textContent  = `Class: ${cls}`;
-  $("#stat-level").textContent  = `LV ${lvl}`;
-  $("#stat-hp").textContent     = `HP ${hp}/${mx}`;
-  $("#stat-atk").textContent    = `ATK ${atk}`;
-  $("#stat-def").textContent    = `DEF ${def}`;
+  document.getElementById("btn-next").disabled = !state.started;
+  const ready = state.player?.specialReady?.() ?? false;
+  document.getElementById("btn-special").disabled = !state.started || !ready;
 
-  // Leave wave/theme/nextboss to your existing code if present
-  // XP fill (0–1 assumed)
-  const xpFill = document.getElementById("xp-fill");
-  if (xpFill) xpFill.style.width = `${Math.floor((st.player?.xpPct ?? 0)*100)}%`;
+  document.getElementById("nextwave").textContent = state.nextPreviewText || "—";
 }
 
-/** Next wave preview – keep a single point of truth. */
-export function updateNextWavePreview() {
-  if (typeof window.previewWaveText === "function") {
-    const txt = window.previewWaveText();
-    document.getElementById("nextwave").textContent = txt || "—";
-  } else {
-    document.getElementById("nextwave").textContent = "—";
-  }
-}
+function nextBossIn(wave){ const mod = wave % 5; return mod===0 ? 0 : (5 - mod); }
