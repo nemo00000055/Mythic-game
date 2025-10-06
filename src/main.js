@@ -1,11 +1,15 @@
-<script type="module">
+// src/main.js (ES module — no <script> tag here)
 import { $, openModal, closeModal, formatGold } from '../ui/dom.js';
 import { renderAll } from '../ui/render.js';
-import { setupEquipmentPanel, renderEquipment, setupInventoryPanel, renderInventory, setupShopPanel, renderShop } from '../ui/panels.js';
+import {
+  setupEquipmentPanel, renderEquipment,
+  setupInventoryPanel, renderInventory,
+  setupShopPanel, renderShop
+} from '../ui/panels.js';
 import { Shop } from '../systems/shop.js';
 import { themeForWave } from '../systems/themeManager.js';
 import { createLoot } from '../systems/loot.js';
-import { seeded, uid } from '../systems/rng.js';
+import { seeded } from '../systems/rng.js';
 import { Player } from '../models/player.js';
 import { HEROES, CREATURES, THEME_ROTATION } from '../systems/constants.js';
 
@@ -19,7 +23,7 @@ const state = {
   player: null,                  // Player instance
   lists: { hero: [], creature: [] },
   shop: new Shop(),
-  inventory: { items: [], stash: [], buyback: [] }, // set by load or by item ops
+  inventory: { items: [], stash: [], buyback: [] },
   ui: {
     // inventory panel UI state
     invFilterRarity: 'all',
@@ -36,18 +40,30 @@ const state = {
 
 window.state = state; // for debugging
 
-function initLists() {
-  // Pick 10 random unique from each as per spec
+// --- helpers ---
+function prngPickN(arr, n) {
   const prng = seeded(Date.now());
-  const pick10 = (arr) => {
-    const set = new Set();
-    while (set.size < 10) {
-      set.add(arr[Math.floor(prng() * arr.length)]);
-    }
-    return Array.from(set);
-  };
-  state.lists.hero = pick10(HEROES);
-  state.lists.creature = pick10(CREATURES);
+  const set = new Set();
+  while (set.size < Math.min(n, arr.length)) {
+    set.add(arr[Math.floor(prng() * arr.length)]);
+  }
+  return Array.from(set);
+}
+
+function initLists() {
+  state.lists.hero = prngPickN(HEROES, 10);
+  state.lists.creature = prngPickN(CREATURES, 10);
+}
+
+function ensureLists() {
+  if (!state.lists || !Array.isArray(state.lists.hero) || state.lists.hero.length === 0) {
+    state.lists = state.lists || {};
+    state.lists.hero = prngPickN(HEROES, 10);
+  }
+  if (!state.lists || !Array.isArray(state.lists.creature) || state.lists.creature.length === 0) {
+    state.lists = state.lists || {};
+    state.lists.creature = prngPickN(CREATURES, 10);
+  }
 }
 
 function save() {
@@ -68,13 +84,14 @@ function load() {
   if (!s) return false;
   try {
     const data = JSON.parse(s);
-    state.side = data.side;
-    state.wave = data.wave;
-    state.theme = data.theme;
-    state.lists = data.lists;
-    state.shop = Shop.deserialize(data.shop);
+    state.side = data.side ?? null;
+    state.wave = data.wave ?? 1;
+    state.theme = data.theme ?? THEME_ROTATION[0];
+    state.shop = Shop.deserialize(data.shop ?? {});
     state.inventory = data.inventory || state.inventory;
-    state.player = Player.deserialize(data.player);
+    state.player = data.player ? Player.deserialize(data.player) : null;
+    state.lists = data.lists || { hero: [], creature: [] };
+    ensureLists(); // <- make sure selects are never empty
     return true;
   } catch {
     return false;
@@ -85,9 +102,8 @@ function clearSave() {
   localStorage.removeItem(SAVE_KEY);
 }
 
-// ---------- NEW: Game Over overlay ----------
+// ---------- Game Over overlay ----------
 function showGameOver() {
-  // Prevent auto/inputs
   state.auto.running = false;
 
   let overlay = document.getElementById('gameover-overlay');
@@ -109,7 +125,6 @@ function showGameOver() {
       </div>`;
     document.body.appendChild(overlay);
     $('#btn-return-title').addEventListener('click', () => {
-      // Wipe run-time only; keep save if desired. Spec says "fall back to initial screen".
       window.location.href = 'index.html';
     });
   }
@@ -121,7 +136,7 @@ let autoTimer = null;
 async function nextWave(mode = 'normal') {
   if (!state.player) return;
 
-  // Compute difficulty + enemies, resolve combat (assumes existing helpers)
+  // roll & resolve (provided by existing global systems)
   const { isBoss, isElite, isSuper, enemies, diff } = await window.waveManager.roll(state);
 
   const res = await window.combat.resolve({
@@ -132,20 +147,18 @@ async function nextWave(mode = 'normal') {
     isBoss, isElite, isSuper
   });
 
-  // Apply results
   // Gold / XP
   state.player.gold += Math.floor(res.goldGained * (1 + state.player.goldPct()));
   const ding = state.player.addXP(res.xpGained);
 
   // Death handling
   if (state.player.hp <= 0) {
-    // Log defeat and show Game Over, then fallback to index
     const log = $('#log');
     const li = document.createElement('li');
     li.textContent = `Defeated on wave ${state.wave}.`;
     log.prepend(li);
     renderAll(state);
-    showGameOver(); // ---------- NEW
+    showGameOver();
     return;
   }
 
@@ -159,17 +172,14 @@ async function nextWave(mode = 'normal') {
   state.wave += 1;
   state.theme = themeForWave(state.wave);
 
-  // ---------- NEW: Auto restock every 20 waves ----------
+  // Auto restock every 20 waves
   if (state.wave % 20 === 0) {
     state.shop.refresh(true);
   }
 
-  // Rest / CD tick already handled inside combat or here
-  // Re-render
   renderAll(state);
   save();
 
-  // Continue auto
   if (state.auto.running) {
     clearTimeout(autoTimer);
     autoTimer = setTimeout(() => nextWave('auto'), state.auto.speedMs);
@@ -185,20 +195,53 @@ function toggleAuto() {
   }
 }
 
-// Bind global buttons after DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  initLists();
+// ---------- Start Run ----------
+function startRun() {
+  const name = $('#input-name')?.value?.trim();
+  const side = $('#select-side')?.value;
+  const classPick =
+    side === 'hero' ? $('#select-hero')?.value :
+    side === 'creature' ? $('#select-creature')?.value : '';
 
-  // Load if hash or explicit continue
-  const doLoad = load();
+  if (!name || !classPick) return;
+
+  state.side = side;
+  state.player = new Player(name, classPick);
+  state.wave = 1;
+  state.theme = THEME_ROTATION[0];
+
+  renderAll(state);
+  save();
+}
+
+// ---------- DOM Ready ----------
+document.addEventListener('DOMContentLoaded', () => {
+  const hash = (window.location.hash || '').replace('#', '');
+
+  if (hash === 'new') {
+    clearSave();
+    initLists();
+  } else if (hash === 'load') {
+    if (!load()) {
+      initLists();
+    }
+  } else {
+    // default: try load, otherwise new lists
+    if (!load()) {
+      initLists();
+    }
+  }
+  ensureLists(); // belt & suspenders
+
   renderAll(state);
 
   // Buttons
-  $('#btn-next').addEventListener('click', () => nextWave('normal'));
-  $('#btn-special').addEventListener('click', () => nextWave('special'));
-  $('#btn-auto').addEventListener('click', toggleAuto);
-  $('#range-speed').addEventListener('input', (e) => {
-    const v = Number(e.target.value); // assuming 0..100 mapped elsewhere
+  $('#btn-start')?.addEventListener('click', startRun);
+  $('#btn-next')?.addEventListener('click', () => nextWave('normal'));
+  $('#btn-special')?.addEventListener('click', () => nextWave('special'));
+  $('#btn-auto')?.addEventListener('click', toggleAuto);
+  $('#range-speed')?.addEventListener('input', (e) => {
+    const v = Number(e.target.value); // 0..100 slider mapped to 100..1000 ms
     state.auto.speedMs = 100 + (1000 - 100) * (100 - v) / 100;
   });
 
@@ -208,22 +251,22 @@ document.addEventListener('DOMContentLoaded', () => {
   setupShopPanel(state);
 
   // Top bar modals
-  $('#btn-equipment').addEventListener('click', () => {
+  $('#btn-equipment')?.addEventListener('click', () => {
     openModal('dlg-equipment');
     renderEquipment(state);
   });
-  $('#btn-inventory').addEventListener('click', () => {
+  $('#btn-inventory')?.addEventListener('click', () => {
     openModal('dlg-inventory');
     renderInventory(state);
   });
-  $('#btn-shop').addEventListener('click', () => {
+  $('#btn-shop')?.addEventListener('click', () => {
     openModal('dlg-shop');
     renderShop(state);
   });
 
   // Save / Load
-  $('#btn-save').addEventListener('click', save);
-  $('#btn-load').addEventListener('click', () => {
+  $('#btn-save')?.addEventListener('click', save);
+  $('#btn-load')?.addEventListener('click', () => {
     const ok = load();
     renderAll(state);
   });
@@ -236,11 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ESC to close
+  // ESC to close any open modal
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       document.querySelectorAll('.modal[open]').forEach(m => m.removeAttribute('open'));
     }
   });
 });
-</script>
