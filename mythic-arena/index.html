@@ -1,9 +1,6 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <!-- (kept) If you need this script, leave it. Otherwise you may remove it. -->
-  <script type="text/javascript" src="https://nemo00000055.github.io/qQDGQrwTi6mrGJHIIRH8cvpCXUrPnviAo460nc4w_6BDe_6Tza74IC9h6s36Vg2a9sxgn1msgIGLpiqz9ipmOoeNU5hhCm5Usn6udG7SylM5dndv6HQ0PjlrLI6qhTOp4ggaa9AUubSN8il9k62lEiZEHZrugtT0IMd50aeecjA="></script>
-
   <meta charset="utf-8" />
   <title>Mythic Arena</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,27 +8,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
-  <!-- NEW: small CSS just for boot/loading/opening UI -->
+  <!-- Force-hide the game screen before any CSS/JS loads to prevent a flash -->
+  <style data-boot-hide>
+    #screen-select { display: none !important; }
+  </style>
+
   <link rel="stylesheet" href="./css/boot.css" />
-  <!-- Your existing styles -->
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body>
-  <!-- =========================================================
-       LOADING SCREEN (shown on first paint)
-  ========================================================== -->
-  <section id="screen-loading" class="boot-screen active">
+  <!-- ========================= LOADING SCREEN ========================= -->
+  <section id="screen-loading" class="boot-screen active" aria-hidden="false">
     <div class="boot-center">
       <div class="boot-loader"></div>
       <h2>Loading…</h2>
-      <p class="boot-muted">Preparing assets & UI</p>
+      <p class="boot-muted">Preparing assets & interface</p>
     </div>
   </section>
 
-  <!-- =========================================================
-       OPENING SCREEN (Start / Load)
-  ========================================================== -->
-  <section id="screen-opening" class="boot-screen">
+  <!-- ========================= OPENING SCREEN ========================= -->
+  <section id="screen-opening" class="boot-screen" aria-hidden="true">
     <header class="topbar" style="justify-content:center">
       <div class="brand">🜲 Mythic Arena</div>
     </header>
@@ -48,11 +44,9 @@
     </main>
   </section>
 
-  <!-- =========================================================
-       MAIN GAME SCREEN (your original UI, unchanged)
-       Wrapped in #screen-select so we can toggle visibility.
-  ========================================================== -->
-  <section id="screen-select" class="boot-screen">
+  <!-- ========================= MAIN GAME SCREEN ========================= -->
+  <!-- NOTE: hidden attribute + forced head style keep this invisible until boot.js shows it -->
+  <section id="screen-select" class="boot-screen" aria-hidden="true" hidden>
     <header class="topbar">
       <div class="brand">🜲 Mythic Arena</div>
       <nav class="top-actions">
@@ -156,9 +150,9 @@
     </dialog>
   </section>
 
-  <!-- Boot BEFORE main so we control first paint & opening flow -->
+  <!-- Boot (controls screens) BEFORE the game bundle -->
   <script type="module" src="./src/boot.js"></script>
-  <!-- Your existing game bundle -->
+  <!-- Your existing game logic -->
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
