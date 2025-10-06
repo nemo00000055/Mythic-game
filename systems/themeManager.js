@@ -2,27 +2,26 @@ import { THEME_ROTATION, HERO_THEME, CREATURE_THEME } from "./constants.js";
 
 export function themeForWave(n){
   const block = Math.floor((n - 1) / 30);
-  return THEME_ROTATION[block % THEME_ROTATION.length];
+  return THEME_ROTATION[ block % THEME_ROTATION.length ];
 }
 
 export function nameTheme(name, side){
   // side: 'hero' | 'creature'
-  const isHeroSide = (side === 'hero');
-  const t = isHeroSide ? (HERO_THEME[name] || null) : (CREATURE_THEME[name] || null);
-  return t || "Warrior";
+  const map = side === 'hero' ? HERO_THEME : CREATURE_THEME;
+  return map[name] || "Warrior";
 }
 
 export function groupByTheme(list, side){
-  const map = {};
+  const result = {};
   for (const name of (list || [])) {
     const t = nameTheme(name, side);
-    if (!map[t]) map[t] = [];
-    map[t].push(name);
+    if (!result[t]) result[t] = [];
+    result[t].push(name);
   }
-  if (Object.keys(map).length === 0) {
-    map.Misc = [...(list || [])];
+  if (Object.keys(result).length === 0) {
+    result.Misc = [...(list || [])];
   }
-  return map;
+  return result;
 }
 
 export function difficultyForWave(n){
@@ -30,26 +29,20 @@ export function difficultyForWave(n){
   const isBoss  = (n % 5  === 0);
   const isElite = (n % 10 === 0);
   const isSuper = (n % 30 === 0);
-
   let mult = 1;
   if (isBoss)  mult *= 1.5;
   if (isElite) mult *= 1.2;
   if (isSuper) mult *= 2.0;
-
   return { base, isBoss, isElite, isSuper, mult, scaled: base * mult };
 }
 
-export function previewWaveText({ wave, playerSide, enemyList } = {}){
+export function previewWaveText({ enemyList } = {}){
   const list = enemyList || [];
   if (!list.length) return "—";
-
-  // Merge counts by name (e.g., "5x Vampire, 1x Titan")
   const counts = new Map();
   for (const n of list) counts.set(n, (counts.get(n) || 0) + 1);
-
   const parts = [...counts.entries()]
-    .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
-    .map(([name, c]) => `${c}x ${name}`);
-
+    .sort((a,b)=> (b[1]-a[1]) || a[0].localeCompare(b[0]))
+    .map(([name,c]) => `${c}x ${name}`);
   return parts.join(", ");
 }
